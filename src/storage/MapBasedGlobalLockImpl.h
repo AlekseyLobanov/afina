@@ -4,6 +4,9 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <list>
+#include <map>
+#include <algorithm>
 
 #include <afina/Storage.h>
 
@@ -31,16 +34,23 @@ public:
 
     // Implements Afina::Storage interface
     bool Delete(const std::string &key) override;
-
+	
     // Implements Afina::Storage interface
     bool Get(const std::string &key, std::string &value) const override;
 
 private:
+	struct ValueInfo {
+		std::string val;
+		std::list<std::string>::iterator it;
+	};
     std::mutex _lock;
 
     size_t _max_size;
-
-    std::map<std::string, std::string> _backend;
+    
+	std::list<std::string> _to_remove;
+    std::map<std::string, ValueInfo> _backend;
+    
+    void delete_if_needed();
 };
 
 } // namespace Backend
