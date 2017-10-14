@@ -1,7 +1,12 @@
 #include <chrono>
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <uv.h>
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <signal.h>
 
 #include <cxxopts.hpp>
 
@@ -32,6 +37,64 @@ void timer_handler(uv_timer_t *handle) {
     std::cout << "Start passive metrics collection" << std::endl;
 }
 
+void write_my_pid(std::string path) {
+    pid_t pid = getpid();
+    std::ofstream f_out(path.c_str());
+    f_out << pid;
+    f_out.close();
+}
+
+
+static void skeleton_daemon()
+{
+    pid_t pid;
+
+    /* Fork off the parent process */
+    pid = fork();
+
+    /* An error occurred */
+    if (pid < 0)
+        exit(EXIT_FAILURE);
+
+    /* Success: Let the parent terminate */
+    if (pid > 0)
+        exit(EXIT_SUCCESS);
+
+    /* On success: The child process becomes session leader */
+    if (setsid() < 0)
+        exit(EXIT_FAILURE);
+
+    /* Catch, ignore and handle signals */
+    //TODO: Implement a working signal handler */
+    signal(SIGCHLD, SIG_IGN);
+    signal(SIGHUP, SIG_IGN);
+
+    /* Fork off for the second time*/
+    pid = fork();
+
+    /* An error occurred */
+    if (pid < 0)
+        exit(EXIT_FAILURE);
+
+    /* Success: Let the parent terminate */
+    if (pid > 0)
+        exit(EXIT_SUCCESS);
+
+    /* Set new file permissions */
+    //umask(0);
+
+    /* Change the working directory to the root directory */
+    /* or another appropriated directory */
+    //chdir("/");
+
+    /* Close all open file descriptors */
+    int x;
+    for (x = sysconf(_SC_OPEN_MAX); x>=0; x--)
+    {
+        close (x);
+    }
+}
+
 int main(int argc, char **argv) {
     // Build version
     // TODO: move into Version.h as a function
@@ -49,6 +112,8 @@ int main(int argc, char **argv) {
         options.add_options()("s,storage", "Type of storage service to use", cxxopts::value<std::string>());
         options.add_options()("n,network", "Type of network service to use", cxxopts::value<std::string>());
         options.add_options()("h,help", "Print usage info");
+        options.add_options()("p,pid", "Write pid of process to file", cxxopts::value<std::string>());
+        options.add_options()("d,daemonize", "Run as daemon");
         options.parse(argc, argv);
 
         if (options.count("help") > 0) {
@@ -63,6 +128,16 @@ int main(int argc, char **argv) {
     // Start boot sequence
     Application app;
     std::cout << "Starting " << app_string.str() << std::endl;
+
+    if (options.count("daemonize") > 0) {
+        std::cout << "Running as daemon pid=" << getpid() << std::endl;
+        skeleton_daemon();
+    }
+
+    if (options.count("pid") > 0) {
+        std::string pid_path = options["pid"].as<std::string>();
+        write_my_pid(pid_path);
+    }
 
     // Build new storage instance
     std::string storage_type = "map_global";
