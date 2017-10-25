@@ -25,7 +25,7 @@ bool MapBasedGlobalLockImpl::Put(const std::string &key,
     ValueInfo val_info;
 
     val_info.val = value;
-    _to_remove.push_back(value);
+    _to_remove.push_back(key);
     val_info.it = prev(_to_remove.end());
     _backend[key] = val_info;
     delete_if_needed();
