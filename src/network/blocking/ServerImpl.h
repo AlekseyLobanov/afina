@@ -2,12 +2,19 @@
 #define AFINA_NETWORK_BLOCKING_SERVER_H
 
 #include <atomic>
+#include <mutex>
+#include <vector>
+#include <unordered_set>
+#include <pthread.h>
+#include <functional>
 #include <condition_variable>
 #include <mutex>
 #include <pthread.h>
 #include <unordered_set>
+#include <memory>
 
 #include <afina/network/Server.h>
+#include <protocol/Parser.h>
 
 namespace Afina {
 namespace Network {
@@ -17,8 +24,16 @@ namespace Blocking {
  * # Network resource manager implementation
  * Server that is spawning a separate thread for each connection
  */
+
+struct PthreadEqual {
+  bool operator()(const pthread_t& t1, const pthread_t& t2) const {
+    return pthread_equal(t1, t2);
+  }
+};
+
 class ServerImpl : public Server {
 public:
+    typedef std::unordered_set<pthread_t, std::hash<pthread_t>, PthreadEqual, std::allocator<pthread_t> > PthreadSet;
     ServerImpl(std::shared_ptr<Afina::Storage> ps);
     ~ServerImpl();
 
@@ -40,10 +55,14 @@ protected:
     /**
      * Methos is running for each connection
      */
-    void RunConnection();
+    void RunConnection(int client_socket);
 
 private:
     static void *RunAcceptorProxy(void *p);
+    static void *RunConnectionProxy(void *p);
+
+    static void cleanup_acceptor(void* args);
+    static void cleanup_connection(void* args);
 
     // Atomic flag to notify threads when it is time to stop. Note that
     // flag must be atomic in order to safely publisj changes cross thread
@@ -72,7 +91,8 @@ private:
 
     // Threads that are processing connection data, permits
     // access only from inside of accept_thread
-    std::unordered_set<pthread_t> connections;
+
+    PthreadSet connections;
 };
 
 } // namespace Blocking
