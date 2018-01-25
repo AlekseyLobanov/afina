@@ -33,6 +33,8 @@ public:
      * its thread should be exit
      */
     virtual void Stop() = 0;
+    
+    virtual void addFIFO(const std::string& rfifo, const std::string& wfifo) {};
 
     /**
      * Blocks calling thread until all workers will be stopped and all resources allocated for the network
