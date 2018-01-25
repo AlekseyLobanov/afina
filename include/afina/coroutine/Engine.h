@@ -26,7 +26,7 @@ private:
         char *Low = nullptr;
 
         // coroutine stack end address
-        char *Hight = nullptr;
+        char *Height = nullptr;
 
         // coroutine stack copy buffer
         std::tuple<char *, uint32_t> Stack = std::make_tuple(nullptr, 0);
@@ -37,6 +37,9 @@ private:
         // To include routine in the different lists, such as "alive", "blocked", e.t.c
         struct context *prev = nullptr;
         struct context *next = nullptr;
+
+
+
     } context;
 
     /**
